@@ -1,11 +1,13 @@
 const userService = require('../../user/service/user.service');
 const tokenService = require('./token.service');
 const { BadRequestError, UnauthorizedError } = require('../../../core/ApiError');
+const config = require('../../../config/config');
+const httpStatus = require('http-status');
 
 /**
  * Authentication Service
  */
-class AuthService {
+const AuthService = {
   /**
    * Login with email and password
    * @param {string} email - User email
@@ -17,7 +19,7 @@ class AuthService {
     const user = await userService.getUserByEmail(email);
     
     if (!user || !(await user.isPasswordMatch(password))) {
-      throw new BadRequestError('Incorrect email or password');
+      throw BadRequestError('Incorrect email or password');
     }
     
     const tokens = tokenService.generateAuthTokens(user);
@@ -26,7 +28,7 @@ class AuthService {
       user,
       tokens,
     };
-  }
+  },
 
   /**
    * Logout the user
@@ -36,7 +38,7 @@ class AuthService {
   async logout(refreshToken) {
     // Blacklist the refresh token
     tokenService.blacklistToken(refreshToken);
-  }
+  },
 
   /**
    * Refresh auth tokens
@@ -46,14 +48,14 @@ class AuthService {
    */
   async refreshAuth(refreshToken) {
     try {
-      const refreshTokenDoc = tokenService.verifyToken(refreshToken);
+      const refreshTokenDoc = await tokenService.verifyToken(refreshToken, config.jwt.refreshSecret);
       const userId = refreshTokenDoc.sub;
       
       // Check if user exists
       const user = await userService.getUserById(userId);
       
       if (!user) {
-        throw new UnauthorizedError('User not found');
+        throw UnauthorizedError('User not found');
       }
       
       // Blacklist the old refresh token to prevent reuse
@@ -64,9 +66,12 @@ class AuthService {
       
       return tokens;
     } catch (error) {
-      throw new UnauthorizedError('Invalid refresh token');
+      if (error.statusCode === httpStatus.UNAUTHORIZED) {
+        throw error;
+      }
+      throw UnauthorizedError('Invalid refresh token');
     }
-  }
+  },
 
   /**
    * Register a new user
@@ -82,6 +87,6 @@ class AuthService {
       tokens,
     };
   }
-}
+};
 
-module.exports = new AuthService(); 
+module.exports = AuthService; 
