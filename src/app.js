@@ -12,6 +12,16 @@ const routes = require('./routes');
 const logger = require('./config/logger');
 const { NotFoundError } = require('./core/ApiError');
 
+// Handle unhandled promise rejections
+process.on('unhandledRejection', (err) => {
+  logger.error('UNHANDLED REJECTION! Shutting down...');
+  logger.error(err);
+  // Don't crash the app in development
+  if (config.env === 'production') {
+    process.exit(1);
+  }
+});
+
 const app = express();
 
 // Set request logging
