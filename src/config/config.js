@@ -17,6 +17,7 @@ const config = {
   },
   jwt: {
     secret: process.env.JWT_SECRET || 'your-secret-key',
+    refreshSecret: process.env.JWT_REFRESH_SECRET || 'your-refresh-secret-key',
     accessExpirationMinutes: process.env.JWT_ACCESS_EXPIRATION || '15m',
     refreshExpirationDays: process.env.JWT_REFRESH_EXPIRATION || '7d',
     resetPasswordExpirationMinutes: process.env.JWT_RESET_PASSWORD_EXPIRATION || '10m',

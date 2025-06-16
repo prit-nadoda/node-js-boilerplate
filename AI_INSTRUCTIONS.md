@@ -64,17 +64,18 @@ This guide provides instructions for AI code assistants working with this Expres
 
 ## Error Handling
 
-### ApiError Classes
+### Error Factory Functions
 - **Location**: `src/core/ApiError.js`
 - **Implementation**:
-  - Extend the base ApiError for custom error types
-  - Use predefined error classes (BadRequestError, NotFoundError, etc.)
+  - Use factory functions to create error objects
+  - Use predefined error factories (badRequest, notFound, etc.)
   - Include appropriate HTTP status codes
+  - Pattern: `throw errors.notFound('Resource not found')`
 
 ### Error Middleware
 - **Location**: `src/middlewares/error.js`
 - **Implementation**:
-  - Convert all errors to ApiError before sending to client
+  - Convert all errors to ApiError format before sending to client
   - Distinguish operational errors from programming errors
   - Log errors appropriately
 
@@ -87,12 +88,13 @@ This guide provides instructions for AI code assistants working with this Expres
 
 ## Response Formatting
 
-### ApiResponse Classes
+### Response Factory Functions
 - **Location**: `src/core/ApiResponse.js`
 - **Implementation**:
-  - Use appropriate response classes (SuccessResponse, CreatedResponse, etc.)
-  - Always follow pattern: `new SuccessResponse('message', data).send(res)`
-  - Ensure responses have consistent structure (success, message, data, timestamp)
+  - Use factory functions to create response objects
+  - Use `sendResponse` utility to send responses
+  - Pattern: `sendResponse(res, responses.success('message', data))`
+  - Available responses: success, created, noContent, badRequest, notFound, internalError
 
 ### Status Code Usage
 - 200: Successful requests (GET, PATCH, PUT)
@@ -391,6 +393,16 @@ const catchAsync = require('../../../utils/catchAsync');
 
 - **Error Flow**:
   `Any Component → ApiError → Error Middleware → Client`
+
+## Repository Pattern
+
+### Repository Functions
+- **Location**: `src/modules/[module-name]/repository/[module-name].repository.js`
+- **Implementation**:
+  - Export an object with CRUD functions
+  - Handle all data access operations
+  - Implement error handling using error factories
+  - Pattern: `const repository = { create, findById, update, delete }`
 
 ---
 
