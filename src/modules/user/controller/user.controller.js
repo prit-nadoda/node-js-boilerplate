@@ -2,7 +2,7 @@ const httpStatus = require('http-status');
 const userService = require('../service/user.service');
 const { pick } = require('../../../middlewares/validate');
 const catchAsync = require('../../../utils/catchAsync');
-const { SuccessResponse, CreatedResponse, NoContentResponse } = require('../../../core/ApiResponse');
+const { sendResponse, responses } = require('../../../core/ApiResponse');
 
 /**
  * Create a new user
@@ -10,7 +10,7 @@ const { SuccessResponse, CreatedResponse, NoContentResponse } = require('../../.
  */
 const createUser = catchAsync(async (req, res) => {
   const user = await userService.createUser(req.body);
-  new CreatedResponse('User created successfully', user).send(res);
+  sendResponse(res, responses.created('User created successfully', user));
 });
 
 /**
@@ -21,7 +21,7 @@ const getUsers = catchAsync(async (req, res) => {
   const filter = pick(req.query, ['name', 'email', 'role', 'isEmailVerified']);
   const options = pick(req.query, ['sortBy', 'sortOrder', 'limit', 'page']);
   const result = await userService.queryUsers(filter, options);
-  new SuccessResponse('Users retrieved successfully', result).send(res);
+  sendResponse(res, responses.success('Users retrieved successfully', result));
 });
 
 /**
@@ -30,7 +30,7 @@ const getUsers = catchAsync(async (req, res) => {
  */
 const getUser = catchAsync(async (req, res) => {
   const user = await userService.getUserById(req.params.userId);
-  new SuccessResponse('User retrieved successfully', user).send(res);
+  sendResponse(res, responses.success('User retrieved successfully', user));
 });
 
 /**
@@ -39,7 +39,7 @@ const getUser = catchAsync(async (req, res) => {
  */
 const updateUser = catchAsync(async (req, res) => {
   const user = await userService.updateUserById(req.params.userId, req.body);
-  new SuccessResponse('User updated successfully', user).send(res);
+  sendResponse(res, responses.success('User updated successfully', user));
 });
 
 /**
@@ -48,7 +48,7 @@ const updateUser = catchAsync(async (req, res) => {
  */
 const deleteUser = catchAsync(async (req, res) => {
   await userService.deleteUserById(req.params.userId);
-  new NoContentResponse('User deleted successfully').send(res);
+  sendResponse(res, responses.noContent('User deleted successfully'));
 });
 
 module.exports = {

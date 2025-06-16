@@ -1,7 +1,7 @@
+const httpStatus = require('http-status');
 const authService = require('../service/auth.service');
-const tokenService = require('../service/token.service');
+const { sendResponse, responses } = require('../../../core/ApiResponse');
 const catchAsync = require('../../../utils/catchAsync');
-const { SuccessResponse, CreatedResponse } = require('../../../core/ApiResponse');
 
 /**
  * Register a new user
@@ -9,7 +9,7 @@ const { SuccessResponse, CreatedResponse } = require('../../../core/ApiResponse'
  */
 const register = catchAsync(async (req, res) => {
   const { user, tokens } = await authService.register(req.body);
-  new CreatedResponse('Registration successful', { user, tokens }).send(res);
+  sendResponse(res, responses.created('User registered successfully', { user, tokens }));
 });
 
 /**
@@ -17,19 +17,17 @@ const register = catchAsync(async (req, res) => {
  * @route POST /api/v1/auth/login
  */
 const login = catchAsync(async (req, res) => {
-  const { email, password } = req.body;
-  const { user, tokens } = await authService.login(email, password);
-  new SuccessResponse('Login successful', { user, tokens }).send(res);
+  const { user, tokens } = await authService.login(req.body.email, req.body.password);
+  sendResponse(res, responses.success('Login successful', { user, tokens }));
 });
 
 /**
- * Logout the user
+ * Logout
  * @route POST /api/v1/auth/logout
  */
 const logout = catchAsync(async (req, res) => {
-  const { refreshToken } = req.body;
-  await authService.logout(refreshToken);
-  new SuccessResponse('Logout successful').send(res);
+  await authService.logout(req.body.refreshToken);
+  sendResponse(res, responses.success('Logout successful'));
 });
 
 /**
@@ -37,9 +35,8 @@ const logout = catchAsync(async (req, res) => {
  * @route POST /api/v1/auth/refresh-tokens
  */
 const refreshTokens = catchAsync(async (req, res) => {
-  const { refreshToken } = req.body;
-  const tokens = await authService.refreshAuth(refreshToken);
-  new SuccessResponse('Token refresh successful', { tokens }).send(res);
+  const tokens = await authService.refreshAuth(req.body.refreshToken);
+  sendResponse(res, responses.success('Tokens refreshed successfully', { tokens }));
 });
 
 module.exports = {
