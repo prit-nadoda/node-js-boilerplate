@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const moment = require('moment');
+const httpStatus = require('http-status');
 const config = require('../../../config/config');
 const { UnauthorizedError } = require('../../../core/ApiError');
 
@@ -8,16 +8,40 @@ const { UnauthorizedError } = require('../../../core/ApiError');
 const tokenBlacklist = new Set();
 
 /**
+ * Parse time string to seconds
+ * @param {string} timeStr - Time string (e.g. '15m', '7d')
+ * @returns {number} Seconds
+ */
+const parseTimeToSeconds = (timeStr) => {
+  const unit = timeStr.slice(-1);
+  const value = parseInt(timeStr.slice(0, -1), 10);
+  
+  switch (unit) {
+    case 'm':
+      return value * 60;
+    case 'h':
+      return value * 60 * 60;
+    case 'd':
+      return value * 24 * 60 * 60;
+    default:
+      return value;
+  }
+};
+
+/**
  * Generate JWT token
  * @param {Object} payload - Data to encode in the token
  * @param {string} secret - Secret key for signing
  * @param {string} expiration - Token expiration time
  * @returns {string} JWT token
  */
-const generateToken = (payload, secret = config.jwt.secret, expiration = config.jwt.accessExpirationMinutes) => {
-  return jwt.sign(payload, secret, {
-    expiresIn: expiration,
-  });
+const generateToken = (userId, expires, secret = config.jwt.secret) => {
+  const payload = {
+    sub: userId,
+    iat: Math.floor(Date.now() / 1000),
+    exp: expires,
+  };
+  return jwt.sign(payload, secret);
 };
 
 /**
@@ -29,10 +53,11 @@ const generateAccessToken = (user) => {
   const payload = {
     sub: user._id,
     role: user.role,
-    iat: moment().unix(),
+    iat: Math.floor(Date.now() / 1000),
   };
   
-  return generateToken(payload, config.jwt.secret, config.jwt.accessExpirationMinutes);
+  const expiresIn = parseTimeToSeconds(config.jwt.accessExpirationMinutes);
+  return generateToken(user._id, Math.floor(Date.now() / 1000) + expiresIn, config.jwt.secret);
 };
 
 /**
@@ -43,30 +68,36 @@ const generateAccessToken = (user) => {
 const generateRefreshToken = (user) => {
   const payload = {
     sub: user._id,
-    iat: moment().unix(),
+    iat: Math.floor(Date.now() / 1000),
     type: 'refresh',
   };
   
-  return generateToken(payload, config.jwt.secret, config.jwt.refreshExpirationDays);
+  const expiresIn = parseTimeToSeconds(config.jwt.refreshExpirationDays);
+  return generateToken(user._id, Math.floor(Date.now() / 1000) + expiresIn, config.jwt.refreshSecret);
 };
 
 /**
  * Verify token and return token doc (or throw an error if it is not valid)
  * @param {string} token - JWT token
+ * @param {string} secret - Secret key for verification
  * @returns {Object} Decoded token payload
  */
-const verifyToken = (token) => {
-  if (tokenBlacklist.has(token)) {
-    throw new UnauthorizedError('Token has been revoked');
-  }
-  
+const verifyToken = async (token, secret = config.jwt.secret) => {
   try {
-    return jwt.verify(token, config.jwt.secret);
+    const payload = jwt.verify(token, secret);
+    const isBlacklisted = await isTokenBlacklisted(token);
+    if (isBlacklisted) {
+      throw UnauthorizedError('Token has been revoked');
+    }
+    return payload;
   } catch (error) {
     if (error.name === 'TokenExpiredError') {
-      throw new UnauthorizedError('Token expired');
+      throw UnauthorizedError('Token expired');
     }
-    throw new UnauthorizedError('Invalid token');
+    if (error.name === 'JsonWebTokenError') {
+      throw UnauthorizedError('Invalid token');
+    }
+    throw error;
   }
 };
 
@@ -88,19 +119,26 @@ const blacklistToken = (token) => {
  * @returns {Object} Access and refresh tokens
  */
 const generateAuthTokens = (user) => {
-  const accessToken = generateAccessToken(user);
-  const refreshToken = generateRefreshToken(user);
+  const accessTokenExpires = Math.floor(Date.now() / 1000) + parseTimeToSeconds(config.jwt.accessExpirationMinutes);
+  const refreshTokenExpires = Math.floor(Date.now() / 1000) + parseTimeToSeconds(config.jwt.refreshExpirationDays);
+  
+  const accessToken = generateToken(user._id, accessTokenExpires, config.jwt.secret);
+  const refreshToken = generateToken(user._id, refreshTokenExpires, config.jwt.refreshSecret);
   
   return {
     access: {
       token: accessToken,
-      expires: moment().add(config.jwt.accessExpirationMinutes, 'minutes').toDate(),
+      expires: new Date(accessTokenExpires * 1000),
     },
     refresh: {
       token: refreshToken,
-      expires: moment().add(config.jwt.refreshExpirationDays, 'days').toDate(),
+      expires: new Date(refreshTokenExpires * 1000),
     },
   };
+};
+
+const isTokenBlacklisted = async (token) => {
+  return tokenBlacklist.has(token);
 };
 
 module.exports = {
@@ -110,4 +148,5 @@ module.exports = {
   verifyToken,
   blacklistToken,
   generateAuthTokens,
+  isTokenBlacklisted,
 }; 
