@@ -1,89 +1,38 @@
 const httpStatus = require('http-status');
 
-/**
- * Base class for API Errors
- * @extends Error
- */
-class ApiError extends Error {
-  /**
-   * Creates an API error.
-   * @param {number} statusCode - HTTP status code of error
-   * @param {string} message - Error message
-   * @param {boolean} isOperational - Whether the error is operational or programming
-   * @param {string} stack - Error stack trace
-   */
-  constructor(statusCode, message, isOperational = true, stack = '') {
-    super(message);
-    this.statusCode = statusCode;
-    this.isOperational = isOperational;
-    
-    if (stack) {
-      this.stack = stack;
-    } else {
-      Error.captureStackTrace(this, this.constructor);
-    }
+const createApiError = (statusCode, message, isOperational = true, stack = '') => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  error.isOperational = isOperational;
+  
+  if (stack) {
+    error.stack = stack;
+  } else {
+    Error.captureStackTrace(error, createApiError);
   }
-}
+  
+  return error;
+};
 
-/**
- * Class for Bad Request Error (400)
- * @extends ApiError
- */
-class BadRequestError extends ApiError {
-  constructor(message = 'Bad request', isOperational = true) {
-    super(httpStatus.BAD_REQUEST, message, isOperational);
-  }
-}
+const ApiError = createApiError;
 
-/**
- * Class for Unauthorized Error (401)
- * @extends ApiError
- */
-class UnauthorizedError extends ApiError {
-  constructor(message = 'Authentication required', isOperational = true) {
-    super(httpStatus.UNAUTHORIZED, message, isOperational);
-  }
-}
+const BadRequestError = (message = 'Bad request', isOperational = true) => 
+  createApiError(httpStatus.BAD_REQUEST, message, isOperational);
 
-/**
- * Class for Forbidden Error (403)
- * @extends ApiError
- */
-class ForbiddenError extends ApiError {
-  constructor(message = 'Forbidden', isOperational = true) {
-    super(httpStatus.FORBIDDEN, message, isOperational);
-  }
-}
+const UnauthorizedError = (message = 'Authentication required', isOperational = true) => 
+  createApiError(httpStatus.UNAUTHORIZED, message, isOperational);
 
-/**
- * Class for Not Found Error (404)
- * @extends ApiError
- */
-class NotFoundError extends ApiError {
-  constructor(message = 'Resource not found', isOperational = true) {
-    super(httpStatus.NOT_FOUND, message, isOperational);
-  }
-}
+const ForbiddenError = (message = 'Forbidden', isOperational = true) => 
+  createApiError(httpStatus.FORBIDDEN, message, isOperational);
 
-/**
- * Class for Conflict Error (409)
- * @extends ApiError
- */
-class ConflictError extends ApiError {
-  constructor(message = 'Conflict', isOperational = true) {
-    super(httpStatus.CONFLICT, message, isOperational);
-  }
-}
+const NotFoundError = (message = 'Resource not found', isOperational = true) => 
+  createApiError(httpStatus.NOT_FOUND, message, isOperational);
 
-/**
- * Class for Internal Server Error (500)
- * @extends ApiError
- */
-class InternalServerError extends ApiError {
-  constructor(message = 'Internal server error', isOperational = false) {
-    super(httpStatus.INTERNAL_SERVER_ERROR, message, isOperational);
-  }
-}
+const ConflictError = (message = 'Conflict', isOperational = true) => 
+  createApiError(httpStatus.CONFLICT, message, isOperational);
+
+const InternalServerError = (message = 'Internal server error', isOperational = false) => 
+  createApiError(httpStatus.INTERNAL_SERVER_ERROR, message, isOperational);
 
 module.exports = {
   ApiError,
